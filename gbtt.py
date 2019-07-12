@@ -112,30 +112,20 @@ def get_freq_axis(data, chstart=0, chstop=-1, apply_doppler=True):
 
     return freq
 
-def mask_hi(freq, volt, line_freq, line_fwhm):
+def mask_line(freq, spec, line_freq, fwhm):
     """
-    """
-
-    #hifrq = 1420.4e6
-    #fwhm = 0.71e6
-
-    if np.sort(freq)[0] <= line_freq <= np.sort(freq)[-1]:
-        mfreq, mvolt = mask_line(freq, volt, line_freq, line_fwhm)
-    else:
-        mfreq, mvolt = freq, volt
-
-    return mfreq, mvolt
-
-def mask_line(freq, spec, line, fwhm):
-    """
+    Masks a line in a spectrum given its frequency and FWHM.
+    
+    :param freq: Frequency axis of the spectrum.
+    :param spec: Amplitude axis of the spectrum.
+    :param line_freq: Frequency at which the line is centered.
+    :param fwhm: FWHM of the line.
     """
 
-    ch0 = np.argmin(abs(freq - (line - fwhm/2.)))
-    chf = np.argmin(abs(freq - (line + fwhm/2.)))
+    ch0 = np.argmin(abs(freq - (line_freq - fwhm/2.)))
+    chf = np.argmin(abs(freq - (line_freq + fwhm/2.)))
 
     if ch0 > chf: ch0,chf = chf,ch0
-
-    #for i,s in enumerate(spec):
 
     spec.mask[:,ch0:chf] = True
     freq.mask[ch0:chf] = True
