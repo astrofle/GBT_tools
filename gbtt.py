@@ -9,61 +9,6 @@ from astropy import time
 from astropy import units as u
 from astropy.coordinates import SkyCoord, FK5
 
-from PyAstronomy import pyasl
-
-def doppler_correct(ra, dec, mean_time, obs_lat=38.433056, obs_lon=-79.839722):
-    """
-    computes the projected velocity of the telescope wrt four coordinate systems: 
-    geo, helio, bary, lsr.
-    
-    :param ra: right ascension in degrees, J2000 frame.
-    :param dec: declination in degrees, J2000 frame.
-    :param mean_time: mean time of observation in isot format. Example "2017-01-15T01:59:58.99"
-    :param obs_lon: East-longitude of observatory in degrees.
-    :param obs_lat: Latitude of observatory in degrees.
-    """
-
-    # Initialize ra and dec of source
-    src = SkyCoord(ra, dec, frame='icrs', unit=u.deg)
-    mytime = time.Time(mean_time, format='isot', scale='utc')
-
-    # Orbital velocity of Earth with respect to the Sun.
-    # helio = for source projected velocity of earth orbit with respect to the Sun center.
-    # bary = for source projected velocity of earth + moon orbit with respect to the Sun center.
-    v_orbit_helio, v_orbit_bary = pyasl.baryCorr(mytime.jd, src.ra.deg, src.dec.deg, deq=2000.0)
-        
-    ## Earth rotational velocity
-    # TO DO: determine LOFAR latitude and longitude from station positions
-    # Taken from chdoppler.pro, "Spherical Astronomy" R. Green p.270 
-    lst = mytime.sidereal_time('apparent', obs_lon)
-    obs_lat = obs_lat * u.deg
-    obs_lon = obs_lon * u.deg
-    hour_angle = lst - src.ra
-    v_spin = -0.465 * np.cos( obs_lat ) * np.cos( src.dec ) * np.sin( hour_angle )
-
-    # LSR defined as: Sun moves at 20.0 km/s toward RA=18.0h and dec=30.0d in 1900J coords
-    # WRT objects near to us in Milky Way (not sun's rotation WRT to galactic center!)
-    lsr_coord = SkyCoord( '18h', '30d', frame='fk5', equinox='J1900')
-    lsr_coord = lsr_coord.transform_to(FK5(equinox='J2000'))
-
-    lsr_comp = np.array([ np.cos(lsr_coord.dec.rad) * np.cos(lsr_coord.ra.rad), \
-                          np.cos(lsr_coord.dec.rad) * np.sin(lsr_coord.ra.rad), \
-                          np.sin(lsr_coord.dec.rad) ])
-
-    src_comp = np.array([ np.cos(src.dec.rad) * np.cos(src.ra.rad), \
-                          np.cos(src.dec.rad) * np.sin(src.ra.rad), \
-                          np.sin(src.dec.rad) ])
-
-    k = np.array( [lsr_comp[0]*src_comp[0], lsr_comp[1]*src_comp[1], lsr_comp[2]*src_comp[2]] )
-    v_lsr = 20. * np.sum( k )
-    
-    geo = - v_spin
-    helio = - v_spin - v_orbit_helio
-    bary = - v_spin - v_orbit_bary
-    lsr = - v_spin - v_orbit_bary - v_lsr
-    vtotal = [geo, helio, bary, lsr]
-    
-    return vtotal
 
 def factors(n):
     """
@@ -76,6 +21,7 @@ def factors(n):
 
     return set(reduce(list.__add__,
                 ([i, n//i] for i in range(1, int(n**0.5) + 1) if n % i == 0)))
+
 
 def get_freq_axis(data, chstart=0, chstop=-1, apply_doppler=True):
     """
@@ -112,6 +58,7 @@ def get_freq_axis(data, chstart=0, chstop=-1, apply_doppler=True):
 
     return freq
 
+
 def mask_line(freq, spec, line_freq, fwhm):
     """
     Masks a line in a spectrum given its frequency and FWHM.
@@ -131,3 +78,5 @@ def mask_line(freq, spec, line_freq, fwhm):
     freq.mask[ch0:chf] = True
 
     return freq, spec
+
+
